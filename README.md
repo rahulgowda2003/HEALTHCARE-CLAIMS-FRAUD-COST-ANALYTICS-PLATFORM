@@ -1,4 +1,5 @@
 Healthcare Claims Fraud & Cost Analytics Platform
+
 Project Overview
 
 Healthcare fraud is a multi-billion dollar problem, driven by overbilling, unnecessary procedures, and misuse of diagnosis codes. This project analyzes large-scale Medicare claims data to identify fraudulent provider behavior and uncover cost inflation patterns.
@@ -21,19 +22,21 @@ Dataset Overview
 5,410 providers
 ~4 claims per patient
 
-Fraud distribution:
+Fraud Distribution:
 
 9% providers → 38% total claims (high concentration risk)
 Architecture & Data Flow
+
 Kaggle Dataset
-     ↓
+↓
 AWS S3 (Data Storage)
-     ↓
+↓
 Snowflake (Data Warehouse)
-     ↓
+↓
 SQL Transformations
-     ↓
+↓
 Power BI (Dashboard & Insights)
+
 1. Data Engineering Pipeline
 AWS + Snowflake Integration
 CREATE STORAGE INTEGRATION s3_int
@@ -50,6 +53,7 @@ Load Data
 COPY INTO provider_raw
 FROM @my_s3_stage/Train.csv
 FILE_FORMAT = my_csv_format;
+
 2. Data Preparation (Python)
 import pandas as pd
 
@@ -60,6 +64,7 @@ provider = pd.read_csv("provider.csv")
 Merge Claims
 claims = pd.concat([inpatient, outpatient], axis=0)
 claims_provider = claims.merge(provider, on="Provider", how="left")
+
 3. Feature Engineering
 Procedure Count
 claims_provider['ProcedureCount'] = claims_provider[proc_cols].notna().sum(axis=1)
@@ -70,21 +75,28 @@ diagnosis_long = claims_provider.melt(
     var_name='Diagnosis_Position',
     value_name='DiagnosisCode'
 )
+
 4. Fraud Analysis
 Claim Amount Comparison
 claims_provider.groupby("PotentialFraud")["InscClaimAmtReimbursed"].describe()
-Insight
+
+Insight:
+
 Fraud claims are ~84% higher
 Claims per Provider
 providers_count = claims_provider.groupby("PotentialFraud")["Provider"].nunique()
 claims_count = claims_provider.groupby("PotentialFraud").size()
 claims_per_provider = claims_count / providers_count
-Insight
+
+Insight:
+
 Fraud providers: ~420 claims/provider
 Non-fraud: ~70 claims/provider
 Procedure Analysis
 claims_provider.groupby('PotentialFraud')['ProcedureCount'].mean()
-Insight
+
+Insight:
+
 Fraud providers perform 2.3x more procedures
 Diagnosis Analysis
 diag_summary = diagnosis_long.groupby(
@@ -93,9 +105,12 @@ diag_summary = diagnosis_long.groupby(
     ClaimCount=('DiagnosisCode','count'),
     AvgClaimAmount=('InscClaimAmtReimbursed','mean')
 ).reset_index()
-Insight
+
+Insight:
+
 Fraud occurs in common diagnoses
 Charges are 45%–91% higher
+
 5. SQL Data Modeling (Snowflake)
 Combine Claims
 CREATE TABLE processed_data.claims_combined AS
@@ -111,6 +126,7 @@ SELECT
     PotentialFraud,
     TRY_TO_NUMBER(InscClaimAmtReimbursed) AS ClaimAmount
 FROM processed_data.claims_with_fraud;
+
 6. Power BI Dashboard (DAX)
 Total Claims = DISTINCTCOUNT(FINAL_CLAIMS[CLAIMID])
 Fraud Claims =
@@ -122,21 +138,22 @@ Fraud % =
 DIVIDE([Fraud Claims], [Total Claims]) * 100
 Average Claim =
 AVERAGE(FINAL_CLAIMS[CLAIMAMOUNT])
+
 7. Dashboard Insights
-Key Findings
 9% providers → 38% claims
 Fraud claims are ~84% higher
 Fraud driven by:
 High claim value
 More procedures
-Not rare diagnoses
+Common diagnoses (not rare cases)
+
 8. Business Recommendations
 Fraud Detection Strategy
 Identify providers with:
-High claim amount
-High procedure count
+High claim amounts
+High procedure counts
 Operational Strategy
-Segment providers:
+Segment providers into:
 Low risk
 Medium risk
 High risk
@@ -145,12 +162,14 @@ Reduce unnecessary procedures
 Monitor abnormal billing patterns
 Revenue Protection
 Avoid blanket restrictions
-Target only high-risk providers
+Apply controls only to high-risk providers
+
 9. Business Impact
 Reduced fraudulent claim exposure
 Improved audit efficiency
 Better cost control
 Maintained revenue from legitimate providers
+
 Skills Demonstrated
 SQL (Joins, Aggregations, Data Modeling)
 Python (Pandas, Data Analysis)
