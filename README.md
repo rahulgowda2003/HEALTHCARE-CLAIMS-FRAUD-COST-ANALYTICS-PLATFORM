@@ -1,51 +1,73 @@
 Healthcare Claims Fraud & Cost Analytics Platform
-
 Project Overview
 
-Healthcare fraud is a multi-billion dollar problem, driven by overbilling, unnecessary procedures, and misuse of diagnosis codes. This project analyzes large-scale Medicare claims data to identify fraudulent provider behavior and uncover cost inflation patterns.
+This project focuses on analyzing healthcare claims data to detect fraudulent provider behavior and identify cost inflation patterns. The analysis is based on Medicare datasets, including inpatient, outpatient, beneficiary, and provider-level data.
 
-The objective was not just to detect fraud, but to build a scalable analytics pipeline that combines data engineering, statistical analysis, and business intelligence to support decision-making.
+Healthcare fraud leads to significant financial losses through overbilling, unnecessary procedures, and misuse of diagnosis codes. This project addresses that challenge by transforming raw claims data into structured insights and identifying high-risk patterns.
 
-Business Problem
+Project Objective
 
-Insurance companies face three critical challenges:
+The primary objective of this project was to:
 
-Which providers are likely committing fraud?
-What behaviors drive inflated healthcare costs?
-How can fraud be reduced without impacting genuine claims or revenue?
+Extract and combine multi-source healthcare datasets
+Identify suspicious providers based on abnormal claim behavior
+Analyze cost differences between fraud and non-fraud claims
+Provide actionable strategies to reduce fraud without impacting revenue
 
-This project answers these questions using structured data analysis and dashboard-driven insights.
+This project simulates a real-world scenario where insurance companies rely on data analytics to reduce fraud and improve operational efficiency.
 
-Dataset Overview
-558,211 claims
-138,556 patients
-5,410 providers
-~4 claims per patient
+Tools and Technologies
+Python (Pandas)
+SQL (Snowflake)
+AWS S3
+Power BI
+DAX
+Data Modeling & Transformation
+Data Collection
 
-Fraud Distribution:
+The dataset was sourced from Kaggle and consists of multiple tables:
 
-9% providers → 38% total claims (high concentration risk)
-Architecture & Data Flow
+Beneficiary Data – Patient demographics and conditions
+Inpatient Claims – Hospital admission claims
+Outpatient Claims – Non-admission claims
+Provider Data – Fraud labels (Yes/No)
 
-Kaggle Dataset
-↓
-AWS S3 (Data Storage)
-↓
-Snowflake (Data Warehouse)
-↓
-SQL Transformations
-↓
-Power BI (Dashboard & Insights)
+These datasets were integrated to create a unified claims dataset for analysis.
 
-1. Data Engineering Pipeline
-AWS + Snowflake Integration
+Data Preparation
+
+Since the data was distributed across multiple tables, transformation was required before analysis.
+
+Key Steps
+Merged inpatient and outpatient datasets
+Joined claims with provider data to include fraud labels
+Created derived features:
+Procedure count per claim
+Average claim amount
+Restructured diagnosis columns for aggregation
+
+These steps ensured data consistency and analytical reliability.
+
+Data Engineering
+
+To simulate a real-world pipeline:
+
+Stored data in AWS S3
+Integrated with Snowflake using external stages
+Loaded raw data into warehouse tables
+Created processed datasets for analysis
+
+This ensured scalability and production-level data handling.
+
+SQL Queries
+Storage Integration
 CREATE STORAGE INTEGRATION s3_int
 TYPE = EXTERNAL_STAGE
 STORAGE_PROVIDER = S3
 ENABLED = TRUE
 STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::role'
 STORAGE_ALLOWED_LOCATIONS = ('s3://health.care.data/Data/');
-Create External Stage
+Create Stage
 CREATE STAGE my_s3_stage
 URL = 's3://health.care.data/Data/'
 STORAGE_INTEGRATION = s3_int;
@@ -53,81 +75,43 @@ Load Data
 COPY INTO provider_raw
 FROM @my_s3_stage/Train.csv
 FILE_FORMAT = my_csv_format;
-
-2. Data Preparation (Python)
+Combine Claims
+CREATE TABLE processed_data.claims_combined AS
+SELECT * FROM inpatient_raw
+UNION ALL
+SELECT * FROM outpatient_raw;
+Python Analysis
+Load Data
 import pandas as pd
 
 beneficiary = pd.read_csv("beneficiary.csv")
 inpatient = pd.read_csv("inpatient.csv")
 outpatient = pd.read_csv("outpatient.csv")
 provider = pd.read_csv("provider.csv")
-Merge Claims
+Merge Data
 claims = pd.concat([inpatient, outpatient], axis=0)
 claims_provider = claims.merge(provider, on="Provider", how="left")
-
-3. Feature Engineering
-Procedure Count
+Feature Engineering
 claims_provider['ProcedureCount'] = claims_provider[proc_cols].notna().sum(axis=1)
-Diagnosis Reshaping
+Diagnosis Transformation
 diagnosis_long = claims_provider.melt(
     id_vars=['ClaimID','Provider','PotentialFraud','InscClaimAmtReimbursed'],
     value_vars=diag_cols,
     var_name='Diagnosis_Position',
     value_name='DiagnosisCode'
 )
+Dashboard Design
 
-4. Fraud Analysis
-Claim Amount Comparison
-claims_provider.groupby("PotentialFraud")["InscClaimAmtReimbursed"].describe()
+The dashboard was designed to provide a clear overview of fraud patterns and cost behavior.
 
-Insight:
-
-Fraud claims are ~84% higher
-Claims per Provider
-providers_count = claims_provider.groupby("PotentialFraud")["Provider"].nunique()
-claims_count = claims_provider.groupby("PotentialFraud").size()
-claims_per_provider = claims_count / providers_count
-
-Insight:
-
-Fraud providers: ~420 claims/provider
-Non-fraud: ~70 claims/provider
-Procedure Analysis
-claims_provider.groupby('PotentialFraud')['ProcedureCount'].mean()
-
-Insight:
-
-Fraud providers perform 2.3x more procedures
-Diagnosis Analysis
-diag_summary = diagnosis_long.groupby(
-    ['PotentialFraud','DiagnosisCode']
-).agg(
-    ClaimCount=('DiagnosisCode','count'),
-    AvgClaimAmount=('InscClaimAmtReimbursed','mean')
-).reset_index()
-
-Insight:
-
-Fraud occurs in common diagnoses
-Charges are 45%–91% higher
-
-5. SQL Data Modeling (Snowflake)
-Combine Claims
-CREATE TABLE processed_data.claims_combined AS
-SELECT * FROM inpatient_raw
-UNION ALL
-SELECT * FROM outpatient_raw;
-Final Dataset
-CREATE TABLE processed_data.final_claims AS
-SELECT
-    BeneID,
-    ClaimID,
-    Provider,
-    PotentialFraud,
-    TRY_TO_NUMBER(InscClaimAmtReimbursed) AS ClaimAmount
-FROM processed_data.claims_with_fraud;
-
-6. Power BI Dashboard (DAX)
+Key Metrics Displayed
+Total Claims
+Fraud vs Non-Fraud Claims
+Average Claim Amount
+Fraud Rate (%)
+Average Procedures per Claim
+Total Providers and Fraud Providers
+DAX Queries
 Total Claims = DISTINCTCOUNT(FINAL_CLAIMS[CLAIMID])
 Fraud Claims =
 CALCULATE(
@@ -138,43 +122,40 @@ Fraud % =
 DIVIDE([Fraud Claims], [Total Claims]) * 100
 Average Claim =
 AVERAGE(FINAL_CLAIMS[CLAIMAMOUNT])
-
-7. Dashboard Insights
-9% providers → 38% claims
-Fraud claims are ~84% higher
-Fraud driven by:
-High claim value
-More procedures
-Common diagnoses (not rare cases)
-
-8. Business Recommendations
-Fraud Detection Strategy
-Identify providers with:
+Visualization Rationale
+Average Claim by Fraud Status (Bar Chart)
+Why used: Best for categorical comparison
+Insight: Fraud claims are ~84% higher
+Average Procedures per Claim (Bar Chart)
+Why used: Compares behavioral differences
+Insight: Fraud providers perform ~2.3x more procedures
+Diagnosis Pattern Analysis
+Why used: Understand fraud distribution
+Insight: Fraud occurs in common diagnoses with inflated costs
+Key Insights
+~9% providers contribute to ~38% claims
+Fraud is driven by:
 High claim amounts
-High procedure counts
-Operational Strategy
-Segment providers into:
-Low risk
-Medium risk
-High risk
-Cost Optimization
+More procedures
+Cost inflation in common diagnoses
+Business Recommendations
+Identify high-risk providers using behavioral metrics
+Focus audits on high-value, high-procedure providers
 Reduce unnecessary procedures
-Monitor abnormal billing patterns
-Revenue Protection
-Avoid blanket restrictions
-Apply controls only to high-risk providers
-
-9. Business Impact
-Reduced fraudulent claim exposure
-Improved audit efficiency
-Better cost control
-Maintained revenue from legitimate providers
-
+Segment providers instead of applying blanket restrictions
+Key Outcomes
+Identified high-impact fraud drivers
+Enabled targeted fraud detection
+Improved cost optimization strategies
+Supported data-driven decision-making
 Skills Demonstrated
 SQL (Joins, Aggregations, Data Modeling)
 Python (Pandas, Data Analysis)
-Snowflake (Data Warehousing)
-AWS S3 (Data Pipeline)
+Snowflake & AWS (Data Engineering)
 Power BI (DAX, Dashboarding)
-Fraud Detection Analytics
-Business Intelligence & Decision-Making
+Business Intelligence & Fraud Analytics
+Project Significance
+
+This project demonstrates how data analytics can be used to detect fraud, optimize costs, and support strategic decision-making in healthcare systems.
+
+It highlights the importance of combining data engineering, analytical thinking, and business understanding to solve real-world problems.
