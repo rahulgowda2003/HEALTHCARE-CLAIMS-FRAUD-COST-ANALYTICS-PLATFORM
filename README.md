@@ -304,7 +304,7 @@ UNION(
 
 ![Dashboard_upload](https://github.com/rahulgowda2003/HEALTHCARE-CLAIMS-FRAUD-COST-ANALYTICS-PLATFORM/blob/main/Overview%20Screenshot%20-%20Page%201.png)
 
-![Dashboard_upload](https://github.com/rahulgowda2003/HEALTHCARE-CLAIMS-FRAUD-COST-ANALYTICS-PLATFORM/blob/main/Healthcare%20Claim%20Fraud%20%26%20Cost%20Analysis%20Chroic%20Condition%20Screenshot.png)
+![Dashboard_upload](https://github.com/rahulgowda2003/HEALTHCARE-CLAIMS-FRAUD-COST-ANALYTICS-PLATFORM/blob/main/Chroic%20Condition%20Screenshot%20-%20Page%202.png)
 
 ---
 
